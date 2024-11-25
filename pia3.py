@@ -16,12 +16,12 @@ from PyQt5.QtCore import QTimer, QDateTime, Qt, QThread, pyqtSignal
 import argparse
 
 # Wetter API Konfiguration
-WEATHER_API_KEY = '736a03e3a7c6f1b387dde9fc3e377fc5'
+WEATHER_API_KEY = 'Your OpenWeather API here'
 WEATHER_API_URL = 'http://api.openweathermap.org/data/2.5/weather'
 
 # Telegram API Konfiguration
-BOT_TOKEN = '7204662701:AAHUtd-aDbum8gymLGG9scfiGomCRK6es3g'  
-CHAT_ID = '7412131329'  
+BOT_TOKEN = 'Your Telegram-Bot Token here'  
+CHAT_ID = 'Your Telegram Chat ID here'  
 
 def send_telegram_message(token, chat_id, message):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
