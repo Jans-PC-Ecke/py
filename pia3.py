@@ -10,18 +10,18 @@ import speech_recognition as sr
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QLabel,
     QTabWidget, QFileDialog, QPushButton, QInputDialog, QTextEdit, QSizePolicy,
-    QListWidget, QCalendarWidget, QMessageBox, QCheckBox
+    QListWidget, QMessageBox, QCheckBox
 )
 from PyQt5.QtCore import QTimer, QDateTime, Qt, QThread, pyqtSignal
 import argparse
 
 # Wetter API Konfiguration
-WEATHER_API_KEY = 'Your OpenWeather API here'
+WEATHER_API_KEY = '736a03e3a7c6f1b387dde9fc3e377fc5'
 WEATHER_API_URL = 'http://api.openweathermap.org/data/2.5/weather'
 
 # Telegram API Konfiguration
-BOT_TOKEN = 'Your Telegram-Bot Token here'  
-CHAT_ID = 'Your Telegram Chat ID here'  
+BOT_TOKEN = '7204662701:AAHUtd-aDbum8gymLGG9scfiGomCRK6es3g'  
+CHAT_ID = '7412131329'  
 
 def send_telegram_message(token, chat_id, message):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -119,7 +119,7 @@ def transcribe_speech(duration=10):
 class WakeWordThread(QThread):
     speech_input = pyqtSignal(str)
     wake_word_detected = pyqtSignal(bool)
-    
+
     def run(self):
         while True:
             if listen_for_wake_word():
@@ -164,6 +164,7 @@ class GPT4AllGUI(QMainWindow):
         self.history_text = []
         self.enable_speech_output = True  
         self.current_volume = 50 
+        self.todo_list = []
 
         # Statuslabel zur Anzeige des Modellstatus.
         self.status_label = QLabel("Status: Modell nicht geladen.")
@@ -188,10 +189,9 @@ class GPT4AllGUI(QMainWindow):
 
         pygame.mixer.init()
 
-        # Hier das Attribut für das Wake-Word-Statuslabel definieren
         self.wake_word_status_label = QLabel("Wake Word: Nicht erkannt")
         self.wake_word_status_label.setStyleSheet("""
-            color: #FF0000;
+            color: #FF0000;  
             font-weight: bold; 
             font-size: 18px;
             padding: 10px;
@@ -346,6 +346,30 @@ class GPT4AllGUI(QMainWindow):
         text_tab.setLayout(self.text_layout)
         tab_widget.addTab(text_tab, "Textverarbeitung")
 
+        # ToDo Tab - Hier erst wird das Todo Layout definiert
+        todo_tab = QWidget()
+        self.todo_layout = QVBoxLayout()
+
+        self.todo_list_widget = QListWidget()
+        self.todo_input = QTextEditWithEnter(parent=self)
+        self.todo_input.setPlaceholderText("Geben Sie hier Ihre To-Do ein... (drücken Sie Enter zum Hinzufügen)")
+        self.todo_layout.addWidget(self.todo_list_widget)
+        self.todo_layout.addWidget(self.todo_input)
+
+        self.add_todo_button = QPushButton("To-Do hinzufügen")
+        self.add_todo_button.clicked.connect(self.add_todo)
+        self.add_todo_button.setStyleSheet(button_style)
+
+        self.delete_todo_button = QPushButton("To-Do löschen")
+        self.delete_todo_button.clicked.connect(self.delete_todo)
+        self.delete_todo_button.setStyleSheet(button_style)
+
+        self.todo_layout.addWidget(self.add_todo_button)
+        self.todo_layout.addWidget(self.delete_todo_button)
+
+        todo_tab.setLayout(self.todo_layout)
+        tab_widget.addTab(todo_tab, "To-Do Liste")
+
         # Notizen Tab
         notes_tab = QWidget()
         notes_layout = QVBoxLayout()
@@ -354,32 +378,19 @@ class GPT4AllGUI(QMainWindow):
         self.notes_section = QTextEdit()
         self.notes_section.setReadOnly(True)
 
-        button_style_notes = """
-            background-color: #FFA500; 
-            color: #FFFFFF; 
-            border: none; 
-            border-radius: 8px; 
-            padding: 12px;  
-            font-size: 16px; 
-        """
+        notes_layout.addWidget(self.notes_list)
+        notes_layout.addWidget(self.notes_section)
 
         self.add_note_button = QPushButton("Notiz hinzufügen")
         self.add_note_button.clicked.connect(self.add_note)
-        self.add_note_button.setStyleSheet(button_style_notes)
+        self.add_note_button.setStyleSheet(button_style)
 
         self.delete_note_button = QPushButton("Notiz löschen")
         self.delete_note_button.clicked.connect(self.delete_note)
-        self.delete_note_button.setStyleSheet(button_style_notes)
+        self.delete_note_button.setStyleSheet(button_style)
 
-        self.delete_all_notes_button = QPushButton("Alle Notizen löschen")
-        self.delete_all_notes_button.clicked.connect(self.delete_all_notes)
-        self.delete_all_notes_button.setStyleSheet(button_style_notes)
-
-        notes_layout.addWidget(self.notes_list)
-        notes_layout.addWidget(self.notes_section)
         notes_layout.addWidget(self.add_note_button)
         notes_layout.addWidget(self.delete_note_button)
-        notes_layout.addWidget(self.delete_all_notes_button)
 
         notes_tab.setLayout(notes_layout)
         tab_widget.addTab(notes_tab, "Notizen")
@@ -397,7 +408,7 @@ class GPT4AllGUI(QMainWindow):
         music_layout.addWidget(self.music_list)
         music_layout.addWidget(self.play_music_button)
         music_layout.addWidget(self.stop_music_button)
-        
+
         self.load_music_button = QPushButton("Musikdatei laden")
         self.load_music_button.clicked.connect(self.load_music_file)
         music_layout.addWidget(self.load_music_button)
@@ -546,6 +557,12 @@ class GPT4AllGUI(QMainWindow):
         elif "musikdatei laden" in recognized_text:
             self.load_music_file()
 
+        elif "to-do hinzufügen" in recognized_text:
+            self.add_todo_from_voice(recognized_text)
+
+        elif "to-do löschen" in recognized_text:
+            self.delete_todo_from_voice(recognized_text)
+
         # Hier können Sie weitere Sprachbefehle zur Verarbeitung hinzufügen...
 
         elif "audio lauter" in recognized_text:
@@ -564,7 +581,49 @@ class GPT4AllGUI(QMainWindow):
             if self.enable_speech_output:
                 speak_text(response_text)
 
-        # Weitere Sprachbefehle nach Bedarf...
+    def add_todo(self):
+        """Fügt ein neues To-Do hinzu."""
+        todo_text = self.todo_input.toPlainText().strip()
+        if todo_text:
+            self.todo_list.append(todo_text)
+            self.todo_list_widget.addItem(todo_text)
+            self.todo_input.clear()
+            send_telegram_message(BOT_TOKEN, CHAT_ID, f"Neue To-Do: {todo_text}")
+            if self.enable_speech_output:
+                speak_text(f"To-Do hinzugefügt: {todo_text}")
+
+    def add_todo_from_voice(self, recognized_text):
+        """Fügt ein neues To-Do hinzu, das über Spracheingabe erkannt wurde."""
+        todo_text = recognized_text.replace("to-do hinzufügen", "").strip()
+        if todo_text:
+            self.todo_list.append(todo_text)
+            self.todo_list_widget.addItem(todo_text)
+            send_telegram_message(BOT_TOKEN, CHAT_ID, f"Neue To-Do: {todo_text}")
+            if self.enable_speech_output:
+                speak_text(f"To-Do hinzugefügt: {todo_text}")
+
+    def delete_todo(self):
+        """Löscht das aktuell ausgewählte To-Do."""
+        current_row = self.todo_list_widget.currentRow()
+        if current_row >= 0:
+            deleted_todo = self.todo_list_widget.takeItem(current_row).text()
+            self.todo_list.remove(deleted_todo)
+            if self.enable_speech_output:
+                speak_text(f"To-Do gelöscht: {deleted_todo}")
+
+    def delete_todo_from_voice(self, recognized_text):
+        """Löscht das aktuell gewählte To-Do über Spracheingabe."""
+        command = recognized_text.replace("to-do löschen", "").strip()
+        try:
+            index = int(command) - 1  # Umwandlung in Index
+            if 0 <= index < len(self.todo_list):
+                deleted_todo = self.todo_list.pop(index)
+                self.todo_list_widget.takeItem(index)  # Löscht das Item aus der GUI
+                if self.enable_speech_output:
+                    speak_text(f"To-Do gelöscht: {deleted_todo}")
+        except (ValueError, IndexError):
+            if self.enable_speech_output:
+                speak_text("Ungültiger Index. Bitte nennen Sie eine gültige To-Do-Nummer.")
 
     def load_notes(self):
         """Lädt die Notizen aus der JSON-Datei, falls vorhanden."""
